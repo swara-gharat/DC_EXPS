@@ -1,32 +1,28 @@
 #communication using pipes
-import os
 import multiprocessing
 
-def child_process(pipe_write):
-    os.close(pipe_write[0])  # Close unused read end
+def child_process(conn):
     message = "Hello from child process!"
-    os.write(pipe_write[1], message.encode())  # Write message to pipe
-    os.close(pipe_write[1])
+    conn.send(message)
+    conn.close()
 
 def parent_process():
-    pipe_read, pipe_write = os.pipe()  # Create pipe
+    parent_conn, child_conn = multiprocessing.Pipe()
 
-    # Create child process (pass pipe_write as a tuple, not a list)
-    process = multiprocessing.Process(target=child_process, args=((pipe_read, pipe_write),))
+    process = multiprocessing.Process(target=child_process, args=(child_conn,))
     process.start()
 
-    os.close(pipe_write)  # Close unused write end
+    child_conn.close()  # Close child end in parent
 
     # Read message from child process
-    message = os.read(pipe_read, 1024).decode()
+    message = parent_conn.recv()
     print(f"Parent received: {message}")
 
-    os.close(pipe_read)
+    parent_conn.close()
     process.join()
 
 if __name__ == "__main__":
     parent_process()
-
 
 
 #ring election algorithm
